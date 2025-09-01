@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { supa } from '../services/supabase';
+import { useMemo, useState } from 'react';
+import { supa, resetSupa } from '../services/supabase';
 import { getSupabaseUrl, getSupabaseAnon, setSupabaseUrl, setSupabaseAnon } from '../services/config';
 
 export default function SignIn() {
@@ -8,9 +8,12 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [sbUrl, setSbUrl] = useState(getSupabaseUrl());
-  const [sbAnon, setSbAnon] = useState(getSupabaseAnon());
-  const haveEnv = !!sbUrl && !!sbAnon;
+  const envPresent = useMemo(() => {
+    try { return !!getSupabaseUrl() && !!getSupabaseAnon(); } catch { return false; }
+  }, []);
+  const [showConfig, setShowConfig] = useState(!envPresent);
+  const [sbUrl, setSbUrl] = useState(getSupabaseUrl() || '');
+  const [sbAnon, setSbAnon] = useState(getSupabaseAnon() || '');
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,6 +34,7 @@ export default function SignIn() {
     try {
       setSupabaseUrl(sbUrl);
       setSupabaseAnon(sbAnon);
+      resetSupa();
       window.location.reload();
     } catch {}
   }
@@ -41,7 +45,7 @@ export default function SignIn() {
         <h1 className="text-xl font-semibold">Anmeldung</h1>
         <p className="text-sm text-gray-600 mt-1">Bitte mit deinem Admin-Account anmelden.</p>
 
-        {!haveEnv && (
+        {showConfig && (
           <div className="mt-4 space-y-2 text-xs">
             <div className="text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
               Supabase URL/Anon Key sind nicht konfiguriert. In Vercel werden ENV-Variablen automatisch verwendet. Alternativ hier lokal hinterlegen:
