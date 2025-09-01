@@ -43,3 +43,44 @@ export async function copyEvent(id: string) {
   const { data: copy, error: e2 } = await sb.from('Event').insert([payload]).select().single();
   if (e2) throw e2; return copy;
 }
+
+export async function listPlatformConfigs(): Promise<any[]> {
+  if (getMode() === 'api') return api<any[]>('/api/platforms');
+  const sb: any = supa();
+  const { data, error } = await sb.from('PlatformConfig').select('*').order('platform');
+  if (error) throw error; return data || [];
+}
+
+export async function savePlatformConfig(platform: string, method: 'api'|'ui', config: any, enabled = true) {
+  if (getMode() === 'api') {
+    const items = await api<any[]>('/api/platforms');
+    const exist = items.find((i) => i.platform === platform && i.method === method);
+    if (exist) return api(`/api/platforms/${exist.id}`, { method: 'PUT', body: JSON.stringify({ config, enabled }) });
+    return api('/api/platforms', { method: 'POST', body: JSON.stringify({ platform, method, name: `${platform} ${method}`, config, enabled }) });
+  }
+  const sb: any = supa();
+  // Upsert by (platform, method)
+  const { data: exist, error: e1 } = await sb.from('PlatformConfig').select('id').eq('platform', platform).eq('method', method).maybeSingle();
+  if (e1) throw e1;
+  if (exist?.id) {
+    const { error } = await sb.from('PlatformConfig').update({ config, enabled, updatedAt: new Date().toISOString() }).eq('id', exist.id);
+    if (error) throw error; return { id: exist.id };
+  } else {
+    const { data, error } = await sb.from('PlatformConfig').insert([{ platform, method, name: `${platform} ${method}`, config, enabled }]).select('id').single();
+    if (error) throw error; return data;
+  }
+}
+
+export async function schedulePublishJob(payload: { eventId: string; platform: string; method: 'api'|'ui'; action?: 'create'|'update'|'delete'; scheduledAt?: string; }) {
+  if (getMode() === 'api') return api('/api/publish', { method: 'POST', body: JSON.stringify(payload) });
+  const sb: any = supa();
+  const { error } = await sb.from('PublishJob').insert([{ 
+    eventId: payload.eventId,
+    platform: payload.platform,
+    method: payload.method,
+    action: payload.action || 'create',
+    scheduledAt: payload.scheduledAt ? new Date(payload.scheduledAt).toISOString() : new Date().toISOString(),
+    status: 'scheduled'
+  }]);
+  if (error) throw error; return { ok: true };
+}

@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import type { PlatformKey, PublishMethod } from '../../shared/types';
+import { getMode } from '@/services/config';
 import { api } from '@/services/api';
+import { schedulePublishJob } from '@/services/data';
 
 export function PublishDrawer({ open, onOpenChange, eventId }: { open: boolean; onOpenChange: (v: boolean) => void; eventId: string }) {
   const [platform, setPlatform] = useState<PlatformKey>('meetup');
@@ -15,10 +17,11 @@ export function PublishDrawer({ open, onOpenChange, eventId }: { open: boolean; 
   async function submit() {
     setLoading(true);
     try {
-      await api('/api/publish', {
-        method: 'POST',
-        body: JSON.stringify({ eventId, platform, method, action: 'create', scheduledAt: when || undefined }),
-      });
+      if (getMode() === 'api') {
+        await api('/api/publish', { method: 'POST', body: JSON.stringify({ eventId, platform, method, action: 'create', scheduledAt: when || undefined }) });
+      } else {
+        await schedulePublishJob({ eventId, platform, method, action: 'create', scheduledAt: when || undefined });
+      }
       onOpenChange(false);
     } finally { setLoading(false); }
   }

@@ -16,9 +16,17 @@ create table if not exists "Event" (
   images text[] default '{}',
   organizer text,
   url text,
+  spontacts jsonb default '{}',
   "createdAt" timestamptz not null default now(),
   "updatedAt" timestamptz not null default now()
 );
+
+-- Ensure column exists in migrated DBs
+do $$ begin
+  if not exists (select 1 from information_schema.columns where table_name='Event' and column_name='spontacts') then
+    alter table "Event" add column spontacts jsonb default '{}';
+  end if;
+end $$;
 
 create table if not exists "EventVersion" (
   id uuid primary key default gen_random_uuid(),
