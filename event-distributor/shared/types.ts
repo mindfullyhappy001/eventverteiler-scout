@@ -11,6 +11,14 @@ export type EventInput = {
   images?: string[];
   organizer?: string;
   url?: string;
+  spontacts?: {
+    category?: string;
+    city?: string;
+    meetingPoint?: string;
+    maxParticipants?: number;
+    visibility?: 'public' | 'friends' | 'private';
+    difficulty?: string;
+  };
 };
 
 export type PlatformKey = 'meetup' | 'eventbrite' | 'facebook' | 'spontacts';

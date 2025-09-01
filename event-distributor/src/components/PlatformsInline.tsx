@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { api } from '@/services/api';
 import { getApiBase, setApiBase, getSupabaseUrl, setSupabaseUrl, getSupabaseAnon, setSupabaseAnon, getMode, setMode } from '@/services/config';
+import { listPlatformConfigs, savePlatformConfig } from '@/services/data';
 
 export function PlatformsInline() {
   const [items, setItems] = useState<any[]>([]);
@@ -16,10 +16,10 @@ export function PlatformsInline() {
 
   async function load() {
     try {
-      const data = await api<any[]>('/api/platforms');
+      const data = await listPlatformConfigs();
       setItems(data);
     } catch (_) {
-      // ignore until API base set
+      // ignore
     }
   }
   useEffect(() => { load(); }, []);
@@ -36,12 +36,7 @@ export function PlatformsInline() {
 
   async function save(platform: string, method: 'api'|'ui', config: any, enabled = true) {
     setLoading(true);
-    const exist = getCfg(platform, method);
-    if (exist) {
-      await api(`/api/platforms/${exist.id}`, { method: 'PUT', body: JSON.stringify({ config, enabled }) });
-    } else {
-      await api('/api/platforms', { method: 'POST', body: JSON.stringify({ platform, method, name: `${platform} ${method}`, config, enabled }) });
-    }
+    await savePlatformConfig(platform, method, config, enabled);
     setLoading(false);
     await load();
   }
