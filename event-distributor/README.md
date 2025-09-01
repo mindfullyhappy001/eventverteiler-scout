@@ -49,3 +49,49 @@ Frontend läuft auf der bereitgestellten Scout-URL. API auf http://localhost:808
 - Nach jeder API-Veröffentlichung wird `get_status` aufgerufen.
 - UI-Bots erzeugen Belege (Screenshots/DOM-Snapshot) und aktualisieren den Status.
 
+---
+
+## Deployment (Supabase-only, Production)
+
+Diese App kann ohne eigenen Backend-Server direkt gegen Supabase betrieben werden. In der Produktion wird der Modus standardmäßig auf „supabase“ gesetzt. Die Supabase-Zugangsdaten werden zuerst aus ENV gelesen, optional dienen die UI-Felder als Fallback.
+
+### Benötigte ENV-Variablen (Vercel)
+- `VITE_SUPABASE_URL` = <Supabase Projekt-URL>
+- `VITE_SUPABASE_ANON` = <Supabase Public Anon Key>
+
+Hinweis: Wenn diese ENV in Vercel gesetzt sind, nutzt die App sie automatisch. Die Felder im Reiter „Plattformen – Konnektivität“ dienen nur als Fallback.
+
+### Vercel Projekt-Konfiguration
+Bevorzugt als Unterprojekt-Deployment:
+- Root Directory: `event-distributor`
+- Install Command: `bun install`
+- Build Command: `bun run build`
+- Output Directory: `dist`
+
+Alternative (Monorepo-Root-Deployment): vercel.json im Repo-Root verwenden (siehe unten), das intern in `event-distributor` installiert und gebaut wird.
+
+### Authentifizierung (Supabase Auth)
+1. Erstelle in Supabase Auth einen Admin-User (E-Mail/Passwort oder Einladung/Magic Link).
+2. Trage `VITE_SUPABASE_URL` und `VITE_SUPABASE_ANON` in Vercel als Environment Variables ein.
+3. Lade die Datei `supabase/rls_prod.sql` im Supabase SQL Editor und führe sie aus.
+   - Standard: authentifizierte Nutzer dürfen lesen/schreiben.
+   - Optional: auf einen einzelnen Admin per E-Mail beschränken. Ersetze `<ADMIN_EMAIL>` in der Datei und verwende die entsprechend kommentierten Policies. Entferne/oder droppe zuvor die generischen Policies, um Überschneidungen zu vermeiden.
+4. Prüfe, dass nicht authentifizierte Zugriffe abgewiesen werden und nach Login CRUD auf allen Tabellen funktioniert (`Event`, `EventVersion`, `PlatformConfig`, `PublishJob`, `EventPublication`, `LogEntry`).
+
+### Frontend-Verhalten
+- App ist standardmäßig im Supabase-Modus und zeigt eine Anmeldemaske (E-Mail/Passwort) an, bis ein gültiger Supabase-Auth-Session besteht.
+- Nach erfolgreichem Login wird die App freigeschaltet. Abmelden ist jederzeit möglich.
+- Hinweis neben den Supabase-Feldern: „Wenn in Vercel ENV gesetzt sind, werden sie automatisch genutzt; die Felder hier dienen als Fallback.“
+
+### Nicht Bestandteil der Deployment-Pipeline
+- `event-distributor-frontend-v2` (falls im Repo vorhanden) ist ein Template/Archiv und wird nicht deployt.
+
+### Optional: vercel.json im Monorepo-Root
+```json
+{
+  "installCommand": "cd event-distributor && bun install",
+  "buildCommand": "cd event-distributor && bun run build",
+  "outputDirectory": "event-distributor/dist"
+}
+```
+
