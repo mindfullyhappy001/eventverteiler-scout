@@ -28,8 +28,9 @@ export function setApiBase(url: string) {
 }
 
 export function getSupabaseUrl() {
-  const env = (import.meta as any)?.env?.VITE_SUPABASE_URL;
-  if (env) return env;
+  const envs: any = (import.meta as any)?.env || {};
+  const env = envs.VITE_SUPABASE_URL || envs.NEXT_PUBLIC_SUPABASE_URL || envs.SUPABASE_URL || envs.PUBLIC_SUPABASE_URL;
+  if (env) return env as string;
   if (typeof window !== 'undefined') return localStorage.getItem(keys.supabaseUrl) || '';
   return '';
 }
@@ -37,8 +38,9 @@ export function setSupabaseUrl(v: string) {
   if (typeof window !== 'undefined') localStorage.setItem(keys.supabaseUrl, v);
 }
 export function getSupabaseAnon() {
-  const env = (import.meta as any)?.env?.VITE_SUPABASE_ANON;
-  if (env) return env;
+  const envs: any = (import.meta as any)?.env || {};
+  const env = envs.VITE_SUPABASE_ANON || envs.VITE_SUPABASE_ANON_KEY || envs.NEXT_PUBLIC_SUPABASE_ANON_KEY || envs.SUPABASE_ANON_KEY || envs.PUBLIC_SUPABASE_ANON_KEY;
+  if (env) return env as string;
   if (typeof window !== 'undefined') return localStorage.getItem(keys.supabaseAnon) || '';
   return '';
 }
