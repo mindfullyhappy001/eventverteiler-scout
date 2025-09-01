@@ -8,10 +8,7 @@ function injectBuiltByScoutPlugin() {
   return {
     name: 'inject-built-by-scout',
     transformIndexHtml(html: string) {
-      // Inject the scout tag script reference
       const scriptTag = '<script defer src="/scout-tag.js"></script>';
-      
-      // Inject the script before the closing body tag
       return html.replace('</body>', scriptTag + '\n  </body>');
     }
   };
@@ -24,5 +21,22 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  // Bridge native Vercel↔Supabase env names into Vite's client-exposed VITE_* vars
+  define: {
+    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(
+      process.env.VITE_SUPABASE_URL ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      process.env.SUPABASE_URL ||
+      process.env.PUBLIC_SUPABASE_URL ||
+      ''
+    ),
+    'import.meta.env.VITE_SUPABASE_ANON': JSON.stringify(
+      process.env.VITE_SUPABASE_ANON ||
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.SUPABASE_ANON_KEY ||
+      process.env.PUBLIC_SUPABASE_ANON_KEY ||
+      ''
+    ),
   },
 });
