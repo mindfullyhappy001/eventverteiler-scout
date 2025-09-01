@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+<script type="text/javascript">
+  // This is a CodeSandbox injection script that's used to
+  // add navigation and inspector functionality to the preview
+  (function () {
+    // 1) Get the <script> tag that's currently running:
+    var me = document.currentScript;
+
+    // 2) Create the blocking‐style <script> to load:
+    var script = document.createElement("script");
+    script.src = "https://codesandbox.io/p/preview-protocol.js";
+
+    // By default a dynamically‐inserted <script> is async=true.
+    // Turn async off to make it behave like a normal blocking <script>:
+    script.async = false;
+    // (Do NOT set defer.)
+
+    // 3) Insert it immediately after the current <script>:
+    me.parentNode.insertBefore(script, me);
+  })();
+
+  const isIFramePreview = window.top !== window.self;
+
+  // Only run this script in editor context
+  if (isIFramePreview) {
+    // This script is used to enable Chrome DevTools functionality
+    (function () {
+      var script = document.createElement("script");
+      script.src =
+        "https://codesandbox.io/p/chrome-devtool/protocol/index.js";
+
+      script.onload = () => {
+        const devtoolProtocol = window.chobitsu;
+        if (devtoolProtocol) {
+          window.addEventListener("message", (event) => {
+            const { type, data } = event.data;
+
+            if (type === "FROM_DEVTOOL") {
+              devtoolProtocol.sendRawMessage(data);
+            }
+          });
+
+          devtoolProtocol.setOnMessage((data) => {
+            if (data.includes('"id":"tmp')) {
+              return;
+            }
+
+            window.parent.postMessage({ type: "TO_DEVTOOL", data }, "*");
+          });
+
+          devtoolProtocol.sendRawMessage(
+            `{"id":5,"method":"Runtime.enable","params":{}}`
+          );
+        }        
+      }
+
+      (document.head || document.documentElement).prepend(script);
+    })();
+  }
+
+  if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ === "undefined") {
+    let nextID = 0;
+    let hook = (__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
+      renderers: new Map(),
+      supportsFiber: true,
+      inject: (renderer) => {
+        const id = nextID++;
+        hook.renderers.set(id, renderer);
+        return id;
+      },
+      onScheduleFiberRoot() {},
+      onCommitFiberRoot() {},
+      onCommitFiberUnmount() {},
+    });
+  }
+
+  document.currentScript.remove();
+</script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Event-Verteiler</title>
+    <style>
+      :root { --c:#0a58ff; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial; }
+      body { margin:0; background:#fff; color:#111; }
+      header { position:sticky; top:0; backdrop-filter:saturate(180%) blur(8px); background:#ffffffcc; border-bottom:1px solid #eee; }
+      .container { max-width:1100px; margin:0 auto; padding:12px 16px; }
+      .nav button { padding:8px 12px; border-radius:8px; border:1px solid #e5e5e5; background:#fff; cursor:pointer; }
+      .nav button.active { background:var(--c); color:#fff; border-color:var(--c); }
+      h1 { font-size:24px; margin:16px 0; }
+      h2 { font-size:20px; margin:12px 0; }
+      .grid { display:grid; gap:12px; }
+      .g2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .g3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+      .g4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+      .card { border:1px solid #eee; border-radius:12px; padding:12px; }
+      label { font-size:13px; color:#444; display:block; }
+      input, textarea, select { margin-top:6px; display:block; width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px; }
+      textarea { min-height:80px; resize:vertical; }
+      .actions { text-align:right; margin-top:8px; }
+      .btn { padding:8px 12px; background:#111; color:#fff; border:none; border-radius:8px; cursor:pointer; }
+      .btn.primary { background:var(--c); }
+      .table { width:100%; border-collapse:collapse; }
+      .table th, .table td { padding:10px; border-bottom:1px solid #eee; text-align:left; font-size:14px; }
+      .muted { color:#666; font-size:13px; }
+      .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+      .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+      .chip { padding:2px 8px; background:#f4f4f5; border-radius:999px; font-size:12px; }
+      .hidden { display:none; }
+      @media (max-width: 720px){ .g2, .g3, .g4 { grid-template-columns: 1fr; } }
+    </style>
+    <script type="module">
+      import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+      const $ = (q) => document.querySelector(q);
+      const $$ = (q) => Array.from(document.querySelectorAll(q));
+      const set = (k,v) => { try{ localStorage.setItem(k, typeof v==='string'?v:JSON.stringify(v)); }catch{} };
+      const get = (k,d) => { try{ const v = localStorage.getItem(k); return v? (v.startsWith('{')||v.startsWith('[')?JSON.parse(v):v):d; }catch{ return d; } };
+
+      // Bootstrap provided Supabase config (from your message)
+      if (!localStorage.getItem('supabaseUrl')) set('supabaseUrl','https://owkkygszfljtkhjidmnv.supabase.co');
+      if (!localStorage.getItem('supabaseAnon')) set('supabaseAnon','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im93a2t5Z3N6ZmxqdGtoamlkbW52Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3MzIzMzYsImV4cCI6MjA3MjMwODMzNn0.9H6ifHfZi4QG4dAcsBm3P6f0DZDgKvTv5onL6ZTj-Fc');
+      if (!localStorage.getItem('appMode')) set('appMode','supabase');
+
+      function cfg(){
+        return {
+          mode: get('appMode','supabase'),
+          apiBase: get('apiBase','http://localhost:8080'),
+          supabaseUrl: get('supabaseUrl',''),
+          supabaseAnon: get('supabaseAnon',''),
+        };
+      }
+      function sb(){ const c=cfg(); if(!c.supabaseUrl||!c.supabaseAnon) return null; return createClient(c.supabaseUrl, c.supabaseAnon); }
+
+      // Routing
+      function route(){
+        const h = location.hash.replace('#','')||'dashboard';
+        for (const id of ['platforms','dashboard','logs']) {
+          const sec = document.getElementById(id); if (sec) sec.classList.toggle('hidden', id!==h);
+          const btn = document.getElementById('nav-'+id); if (btn) btn.classList.toggle('active', id===h);
+        }
+      }
+
+      // Events state
+      let events = get('eventsData', []);
+      let filterQ = '';
+      let sortKey = 'createdAt';
+
+      function uid(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
+
+      function renderImagesPreview(){
+        const list = $('#img_list'); list.innerHTML='';
+        const imgs = ($('#f_images').value||'').split(',').map(s=>s.trim()).filter(Boolean);
+        for (const u of imgs){ const span=document.createElement('span'); span.className='chip'; span.textContent=u.split('/').pop(); list.appendChild(span); }
+      }
+
+      function renderEvents(){
+        const tbody = $('#events-tbody');
+        tbody.innerHTML = '';
+        let list = [...events];
+        if (filterQ) {
+          const q = filterQ.toLowerCase();
+          list = list.filter(e=>
+            (e.title||'').toLowerCase().includes(q) ||
+            (e.description||'').toLowerCase().includes(q) ||
+            (e.category||'').toLowerCase().includes(q) ||
+            (e.organizer||'').toLowerCase().includes(q)
+          );
+        }
+        list.sort((a,b)=>{
+          if (sortKey==='date') return (a.date||'').localeCompare(b.date||'');
+          if (sortKey==='title') return (a.title||'').localeCompare(b.title||'');
+          return (b.createdAt||0)-(a.createdAt||0);
+        });
+        for (const e of list){
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${e.title||'—'}</td>
+            <td>${e.date? new Date(e.date).toLocaleString(): '—'}</td>
+            <td>${e.category||'—'}</td>
+            <td>${(e.status||'—')}</td>
+            <td style="text-align:right;">
+              <button class="btn" data-act="edit" data-id="${e.id}">Bearbeiten</button>
+              <button class="btn" data-act="copy" data-id="${e.id}">Kopieren</button>
+              <button class="btn" data-act="pub" data-id="${e.id}">Publish</button>
+              <button class="btn" data-act="del" data-id="${e.id}">Löschen</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }
+
+      async function saveEvent(e){
+        if (!e.id) e.id = uid();
+        if (!e.createdAt) e.createdAt = Date.now();
+        const useSb = cfg().mode==='supabase' && sb();
+        if (useSb){
+          const client = sb();
+          try{
+            // Upsert via RPC: if table exists
+            const { error } = await client.from('Event').upsert([{...e, id:e.id}]);
+            if (error) throw error;
+          }catch(err){ console.warn('Supabase save failed, falling back to local', err); }
+        }
+        const idx = events.findIndex(x=>x.id===e.id);
+        if (idx>=0) events[idx]=e; else events.unshift(e);
+        set('eventsData', events);
+        renderEvents();
+      }
+      function getEventForm(){
+        return {
+          id: $('#f_id').value||undefined,
+          title: $('#f_title').value.trim()||undefined,
+          description: $('#f_desc').value.trim()||undefined,
+          date: $('#f_date').value? new Date($('#f_date').value).toISOString(): undefined,
+          time: $('#f_time').value||undefined,
+          location: $('#f_location').value? tryJSON($('#f_location').value): undefined,
+          category: $('#f_category').value||undefined,
+          tags: $('#f_tags').value? $('#f_tags').value.split(',').map(s=>s.trim()).filter(Boolean): [],
+          price: $('#f_price').value? Number($('#f_price').value): undefined,
+          isVirtual: $('#f_virtual').checked||false,
+          images: $('#f_images').value? $('#f_images').value.split(',').map(s=>s.trim()).filter(Boolean): [],
+          organizer: $('#f_organizer').value||undefined,
+          url: $('#f_url').value||undefined,
+        };
+      }
+      function setEventForm(e){
+        $('#f_id').value = e?.id||'';
+        $('#f_title').value = e?.title||'';
+        $('#f_desc').value = e?.description||'';
+        $('#f_date').value = e?.date? new Date(e.date).toISOString().slice(0,16): '';
+        $('#f_time').value = e?.time||'';
+        $('#f_location').value = e?.location? JSON.stringify(e.location): '';
+        $('#f_category').value = e?.category||'';
+        $('#f_tags').value = (e?.tags||[]).join(',');
+        $('#f_price').value = e?.price??'';
+        $('#f_virtual').checked = !!e?.isVirtual;
+        $('#f_images').value = (e?.images||[]).join(','); renderImagesPreview();
+        $('#f_organizer').value = e?.organizer||'';
+        $('#f_url').value = e?.url||'';
+      }
+      function tryJSON(s){ try{ return JSON.parse(s);}catch{return s;}}
+
+      function onTableClick(ev){
+        const btn = ev.target.closest('button'); if(!btn) return;
+        const id = btn.dataset.id; const act = btn.dataset.act;
+        const e = events.find(x=>x.id===id);
+        if (act==='edit'){ setEventForm(e); window.location.hash='#dashboard'; document.getElementById('new-card').scrollIntoView({behavior:'smooth'}); }
+        if (act==='copy'){ const c={...e, id:undefined, title:(e.title||'Event')+' (Copy)'}; setEventForm(c); window.location.hash='#dashboard'; }
+        if (act==='del'){ events=events.filter(x=>x.id!==id); set('eventsData', events); renderEvents(); }
+        if (act==='pub'){ openPublish(e); }
+      }
+
+      function openPublish(e){
+        const dlg = $('#pub'); dlg.style.display='block';
+        $('#pub_event').textContent = e.title||e.id;
+        $('#pub_id').value = e.id;
+      }
+      function closePublish(){ $('#pub').style.display='none'; }
+
+      async function doPublish(){
+        const id = $('#pub_id').value; const platform = $('#pub_platform').value; const method = $('#pub_method').value;
+        const when = $('#pub_when').value; const action = $('#pub_action').value;
+        const c = cfg();
+        const payload = { eventId:id, platform, method, action, scheduledAt: when? new Date(when).toISOString(): undefined };
+        try{
+          if (c.mode==='api'){
+            const r = await fetch(c.apiBase+'/api/publish',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
+            if (!r.ok) throw new Error(await r.text());
+          } else {
+            const client = sb(); if (!client) throw new Error('Supabase URL/Key fehlt');
+            const { error } = await client.from('PublishJob').insert([{
+              eventId:id, platform, method, action, scheduledAt: when? new Date(when).toISOString(): new Date().toISOString(), status:'scheduled'
+            }]); if (error) throw error;
+          }
+          alert('Publishing angelegt. Status erscheint nach Ausführung.');
+          closePublish();
+        }catch(err){ alert('Fehler: '+(err.message||err)); }
+      }
+
+      function exportCSV(){
+        const cols=['id','title','description','date','time','location','category','tags','price','isVirtual','images','organizer','url'];
+        const lines=[cols.join(',')];
+        for(const e of events){
+          const row=[e.id,e.title||'',(e.description||'').replace(/\n/g,' '),e.date||'',e.time||'',e.location?JSON.stringify(e.location):'',e.category||'',(e.tags||[]).join('|'),e.price??'',e.isVirtual??'',(e.images||[]).join('|'),e.organizer||'',e.url||''].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
+          lines.push(row);
+        }
+        const blob=new Blob([lines.join('\n')],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='events.csv'; a.click(); URL.revokeObjectURL(url);
+      }
+      function importCSVFile(file){
+        const reader=new FileReader(); reader.onload=()=>{
+          const text=reader.result; const [header,...rows]=String(text).split(/\r?\n/).filter(Boolean);
+          const cols=header.split(',').map(h=>h.replace(/^"|"$/g,''));
+          for(const line of rows){ const parts=line.match(/"([^"]|"")*"(?=,|$)/g)?.map(v=>v.slice(1,-1).replace(/""/g,'"'))||[]; const obj={}; cols.forEach((c,i)=>obj[c]=parts[i]);
+            const ev={ id:uid(), title:obj.title||'', description:obj.description||'', date:obj.date||'', time:obj.time||'', location:obj.location?tryJSON(obj.location):undefined, category:obj.category||'', tags:obj.tags?String(obj.tags).split('|').filter(Boolean):[], price:obj.price?parseFloat(obj.price):undefined, isVirtual: obj.isVirtual==='true'||obj.isVirtual===true, images:obj.images?String(obj.images).split('|').filter(Boolean):[], organizer:obj.organizer||'', url:obj.url||'', createdAt:Date.now() };
+            events.push(ev);
+          }
+          set('eventsData', events); renderEvents();
+        }; reader.readAsText(file);
+      }
+
+      async function uploadImages(files){
+        const imgs = ($('#f_images').value||'').split(',').map(s=>s.trim()).filter(Boolean);
+        const client = sb();
+        if (client){
+          try { await client.storage.createBucket('event-images', { public: true }); } catch {}
+          for (const f of files){
+            const name = `${Date.now()}-${Math.random().toString(36).slice(2)}-${f.name}`;
+            const { error } = await client.storage.from('event-images').upload(name, f, { upsert: false });
+            if (error && error.message && !/Duplicate/.test(error.message)) { alert('Upload Fehler: '+error.message); continue; }
+            const { data } = client.storage.from('event-images').getPublicUrl(name);
+            imgs.push(data.publicUrl);
+          }
+        } else {
+          for (const f of files){
+            const b64 = await fileToDataURL(f); imgs.push(b64);
+          }
+        }
+        $('#f_images').value = imgs.join(','); renderImagesPreview();
+      }
+      function fileToDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
+
+      async function loadFromSupabase(){
+        try{
+          const client = sb(); if (!client) return;
+          const { data, error } = await client.from('Event').select('*').order('createdAt', { ascending:false });
+          if (error) throw error; if (Array.isArray(data)) { events = data; set('eventsData', events); renderEvents(); }
+        }catch(err){ console.warn('Supabase fetch failed (Schema noch nicht importiert?)', err); }
+      }
+
+      window.addEventListener('DOMContentLoaded',()=>{
+        $('#mode').value = get('appMode','supabase');
+        $('#apiBase').value = get('apiBase','http://localhost:8080');
+        $('#supabaseUrl').value = get('supabaseUrl','');
+        $('#supabaseAnon').value = get('supabaseAnon','');
+
+        $('#events-tbody').addEventListener('click', onTableClick);
+        $('#btn-save').addEventListener('click', ()=> saveEvent(getEventForm()));
+        $('#btn-reset').addEventListener('click', ()=> setEventForm({}));
+        $('#q').addEventListener('input', (e)=>{ filterQ=e.target.value; renderEvents(); });
+        $('#sort').addEventListener('change', (e)=>{ sortKey=e.target.value; renderEvents(); });
+        $('#csvfile').addEventListener('change', (e)=>{ const f=e.target.files?.[0]; if(f) importCSVFile(f); e.target.value=''; });
+        $('#btn-export').addEventListener('click', exportCSV);
+        $('#pub_close').addEventListener('click', closePublish);
+        $('#pub_run').addEventListener('click', doPublish);
+        $('#img_file').addEventListener('change', (e)=>{ const files=e.target.files; if(files?.length) uploadImages(files); e.target.value=''; });
+
+        window.addEventListener('hashchange', route); route();
+        loadFromSupabase();
+        renderEvents();
+      });
+    </script>
+  </head>
+  <body>
+    <header>
+      <div class="container" style="display:flex;gap:12px;align-items:center;justify-content:space-between;">
+        <div style="font-weight:600;">Event‑Verteiler</div>
+        <div class="nav" style="display:flex;gap:8px;">
+          <button id="nav-platforms" onclick="location.hash='#platforms'">Plattformen</button>
+          <button id="nav-dashboard" class="active" onclick="location.hash='#dashboard'">Dashboard</button>
+          <button id="nav-logs" onclick="location.hash='#logs'">Logs</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <section id="platforms" class="hidden">
+        <h1>Plattformen – Konnektivität</h1>
+        <div class="grid g4 card">
+          <label>Modus
+            <select id="mode">
+              <option value="api">Backend API</option>
+              <option value="supabase">Supabase direkt</option>
+            </select>
+          </label>
+          <label>API Server URL
+            <input id="apiBase" placeholder="http://localhost:8080" />
+          </label>
+          <label>DB URL (Supabase URL)
+            <input id="supabaseUrl" placeholder="https://xyz.supabase.co" />
+          </label>
+          <label>Supabase Anon Key
+            <input id="supabaseAnon" placeholder="public anon key" />
+          </label>
+          <div class="actions" style="grid-column:1/-1;"><button class="btn primary" onclick="localStorage.setItem('appMode', document.getElementById('mode').value); localStorage.setItem('apiBase', document.getElementById('apiBase').value); localStorage.setItem('supabaseUrl', document.getElementById('supabaseUrl').value); localStorage.setItem('supabaseAnon', document.getElementById('supabaseAnon').value); alert('Konnektivität gespeichert.');">Übernehmen</button></div>
+        </div>
+
+        <h2>Meetup</h2>
+        <div class="grid g2">
+          <div class="card">
+            <div class="muted" style="margin-bottom:6px;">API</div>
+            <label>API Token<input id="m_api_token" /></label>
+            <label>Group Slug<input id="m_api_group" /></label>
+            <div class="actions"><button class="btn" onclick="localStorage.setItem('m_api_token', document.getElementById('m_api_token').value); localStorage.setItem('m_api_group', document.getElementById('m_api_group').value); alert('Gespeichert.');">Speichern</button></div>
+          </div>
+          <div class="card">
+            <div class="muted" style="margin-bottom:6px;">UI‑Bot</div>
+            <label>Login E‑Mail<input id="m_ui_email" /></label>
+            <label>Login Passwort<input id="m_ui_pw" type="password" /></label>
+            <label>Group URL (optional)<input id="m_ui_groupUrl" /></label>
+            <div class="actions"><button class="btn" onclick="localStorage.setItem('m_ui_email', document.getElementById('m_ui_email').value); localStorage.setItem('m_ui_pw', document.getElementById('m_ui_pw').value); localStorage.setItem('m_ui_groupUrl', document.getElementById('m_ui_groupUrl').value); alert('Gespeichert.');">Speichern</button></div>
+          </div>
+        </div>
+
+        <h2>Eventbrite</h2>
+        <div class="grid g2">
+          <div class="card">
+            <div class="muted" style="margin-bottom:6px;">API</div>
+            <label>API Token<input id="eb_api_token" /></label>
+            <div class="actions"><button class="btn" onclick="localStorage.setItem('eb_api_token', document.getElementById('eb_api_token').value); alert('Gespeichert.');">Speichern</button></div>
+          </div>
+          <div class="card">
+            <div class="muted" style="margin-bottom:6px;">UI‑Bot</div>
+            <label>Login E‑Mail<input id="eb_ui_email" /></label>
+            <label>Login Passwort<input id="eb_ui_pw" type="password" /></label>
+            <div class="actions"><button class="btn" onclick="localStorage.setItem('eb_ui_email', document.getElementById('eb_ui_email').value); localStorage.setItem('eb_ui_pw', document.getElementById('eb_ui_pw').value); alert('Gespeichert.');">Speichern</button></div>
+          </div>
+        </div>
+
+        <h2>Facebook Events</h2>
+        <div class="grid g2">
+          <div class="card">
+            <div class="muted" style="margin-bottom:6px;">API</div>
+            <label>Page ID<input id="fb_api_pageId" /></label>
+            <label>Page Token<input id="fb_api_pageToken" /></label>
+            <div class="actions"><button class="btn" onclick="localStorage.setItem('fb_api_pageId', document.getElementById('fb_api_pageId').value); localStorage.setItem('fb_api_pageToken', document.getElementById('fb_api_pageToken').value); alert('Gespeichert.');">Speichern</button></div>
+          </div>
+          <div class="card">
+            <div class="muted" style="margin-bottom:6px;">UI‑Bot</div>
+            <label>Login E‑Mail<input id="fb_ui_email" /></label>
+            <label>Login Passwort<input id="fb_ui_pw" type="password" /></label>
+            <div class="actions"><button class="btn" onclick="localStorage.setItem('fb_ui_email', document.getElementById('fb_ui_email').value); localStorage.setItem('fb_ui_pw', document.getElementById('fb_ui_pw').value); alert('Gespeichert.');">Speichern</button></div>
+          </div>
+        </div>
+
+        <h2>Spontacts.de</h2>
+        <div class="grid g2">
+          <div class="card" style="opacity:.6; pointer-events:none;">
+            <div class="muted">API</div>
+            <label>Nicht verfügbar<input disabled /></label>
+          </div>
+          <div class="card">
+            <div class="muted" style="margin-bottom:6px;">UI‑Bot</div>
+            <label>Login E‑Mail<input id="sp_ui_email" /></label>
+            <label>Login Passwort<input id="sp_ui_pw" type="password" /></label>
+            <div class="actions"><button class="btn" onclick="localStorage.setItem('sp_ui_email', document.getElementById('sp_ui_email').value); localStorage.setItem('sp_ui_pw', document.getElementById('sp_ui_pw').value); alert('Gespeichert.');">Speichern</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="dashboard">
+        <h1>Event‑Verteiler Dashboard</h1>
+        <div class="card" id="new-card">
+          <div class="row" style="justify-content:space-between;">
+            <div class="muted">Neues Event / Bearbeiten</div>
+            <div class="row">
+              <input id="q" placeholder="Suche…" style="width:220px;" />
+              <select id="sort">
+                <option value="createdAt">Neueste zuerst</option>
+                <option value="date">Datum</option>
+                <option value="title">Titel</option>
+              </select>
+              <label class="btn" for="csvfile">CSV Import</label>
+              <input id="csvfile" type="file" accept=".csv" style="display:none" />
+              <button id="btn-export" class="btn">CSV Export</button>
+            </div>
+          </div>
+          <input id="f_id" type="hidden" />
+          <div class="grid g3" style="margin-top:12px;">
+            <label>Titel<input id="f_title" /></label>
+            <label>Datum/Zeit<input id="f_date" type="datetime-local" /></label>
+            <label>Kategorie<input id="f_category" /></label>
+          </div>
+          <div class="grid g3">
+            <label>Preis<input id="f_price" type="number" step="0.01" /></label>
+            <label>Virtuell?<input id="f_virtual" type="checkbox" /></label>
+            <label>Organizer<input id="f_organizer" /></label>
+          </div>
+          <label>Beschreibung<textarea id="f_desc"></textarea></label>
+          <div class="grid g3">
+            <label>Ort (JSON/Text)<input id="f_location" /></label>
+            <label>Tags (Komma)<input id="f_tags" /></label>
+            <label>Bilder (Komma URLs)<input id="f_images" /></label>
+          </div>
+          <div class="row">
+            <input id="img_file" type="file" multiple />
+            <div id="img_list" class="chips"></div>
+          </div>
+          <label>URL<input id="f_url" /></label>
+          <div class="actions">
+            <button id="btn-reset" class="btn">Zurücksetzen</button>
+            <button id="btn-save" class="btn primary">Speichern</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <table class="table">
+            <thead>
+              <tr><th>Titel</th><th>Datum</th><th>Kategorie</th><th>Status</th><th style="text-align:right;">Aktionen</th></tr>
+            </thead>
+            <tbody id="events-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="logs" class="hidden">
+        <h1>Logs</h1>
+        <div class="muted">Wird nach ersten Veröffentlichungen gefüllt.</div>
+      </section>
+    </main>
+
+    <!-- Publish Dialog -->
+    <div id="pub" style="display:none; position:fixed; inset:0; background:#0006; backdrop-filter:blur(2px);">
+      <div style="max-width:560px; margin:10vh auto; background:#fff; border-radius:12px; padding:16px;">
+        <h2>Veröffentlichen</h2>
+        <div class="muted" id="pub_event"></div>
+        <input id="pub_id" type="hidden" />
+        <div class="grid g3" style="margin-top:12px;">
+          <label>Plattform
+            <select id="pub_platform">
+              <option value="meetup">Meetup</option>
+              <option value="eventbrite">Eventbrite</option>
+              <option value="facebook">Facebook</option>
+              <option value="spontacts">Spontacts (UI)</option>
+            </select>
+          </label>
+          <label>Methode
+            <select id="pub_method">
+              <option value="api">API</option>
+              <option value="ui">UI‑Bot</option>
+            </select>
+          </label>
+          <label>Aktion
+            <select id="pub_action">
+              <option value="create">create</option>
+              <option value="update">update</option>
+              <option value="delete">delete</option>
+            </select>
+          </label>
+        </div>
+        <label>Zeitpunkt (optional)
+          <input id="pub_when" type="datetime-local" />
+        </label>
+        <div class="actions" style="margin-top:12px;">
+          <button id="pub_close" class="btn">Abbrechen</button>
+          <button id="pub_run" class="btn primary">Planen</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
