@@ -1,0 +1,26 @@
+{
+  "name": "event-distributor-bots",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "install:pw": "npx playwright install --with-deps",
+    "run": "tsx runner.ts",
+    "meetup:create": "tsx src/meetup/createEvent.ts",
+    "eventbrite:create": "tsx src/eventbrite/createEvent.ts",
+    "facebook:create": "tsx src/facebook/createEvent.ts"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.47.2",
+    "@prisma/client": "^5.17.0",
+    "csv-stringify": "^6.5.2",
+    "dotenv": "^16.4.5",
+    "execa": "^9.3.0",
+    "pino": "^9.4.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.17.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3"
+  }
+}
