@@ -95,3 +95,21 @@ Alternative (Monorepo-Root-Deployment): vercel.json im Repo-Root verwenden (sieh
 }
 ```
 
+### UI-Bot Automatisierung (Spontacts) – Supabase-only
+- Plattform-Logins speicherst du in der App unter „Plattformen“. Diese werden in `PlatformConfig` (Supabase) persistiert und dauerhaft für die Bots genutzt.
+- Erstelle Events im Dashboard. Zusätzliche Spontacts-Felder stehen im Formular zur Verfügung und werden in `Event.spontacts` gespeichert.
+- Veröffentlichen (UI-Bot): Im Supabase-Modus wird ein `PublishJob` in Supabase angelegt.
+- Ausführung: Starte den Bots-Worker lokal/Server, der Jobs aus Supabase verarbeitet und Playwright ausführt.
+
+Bots-Worker starten
+```bash
+cd event-distributor/bots
+bun install
+bun run install:pw
+# Variante 1: Service-Role Key
+SUPABASE_URL=... SUPABASE_SERVICE_ROLE=... bun run supabase:worker
+# Variante 2: Admin-Login (setzt zusätzlich Anon)
+SUPABASE_URL=... VITE_SUPABASE_ANON=... SUPABASE_ADMIN_EMAIL=... SUPABASE_ADMIN_PASSWORD=... bun run supabase:worker
+```
+Der Worker pollt `PublishJob` (status=scheduled) und führt bei `spontacts/ui` den Bot `src/spontacts/createEvent.ts` aus. Nach Erfolg wird `EventPublication` und der Job-Status aktualisiert. Artefakte findest du unter `bots/artifacts/<jobId>/`.
+
