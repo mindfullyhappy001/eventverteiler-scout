@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supa } from '../services/supabase';
-import { getSupabaseUrl, getSupabaseAnon } from '../services/config';
+import { getSupabaseUrl, getSupabaseAnon, setSupabaseUrl, setSupabaseAnon } from '../services/config';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
@@ -8,7 +8,9 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const haveEnv = !!getSupabaseUrl() && !!getSupabaseAnon();
+  const [sbUrl, setSbUrl] = useState(getSupabaseUrl());
+  const [sbAnon, setSbAnon] = useState(getSupabaseAnon());
+  const haveEnv = !!sbUrl && !!sbAnon;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,6 +27,14 @@ export default function SignIn() {
     }
   }
 
+  function applyLocalConfig() {
+    try {
+      setSupabaseUrl(sbUrl);
+      setSupabaseAnon(sbAnon);
+      window.location.reload();
+    } catch {}
+  }
+
   return (
     <div className="min-h-screen grid place-items-center bg-gray-50">
       <div className="w-full max-w-sm p-6 bg-white shadow rounded">
@@ -32,9 +42,13 @@ export default function SignIn() {
         <p className="text-sm text-gray-600 mt-1">Bitte mit deinem Admin-Account anmelden.</p>
 
         {!haveEnv && (
-          <div className="mt-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
-            Supabase URL/Anon Key sind nicht konfiguriert. Setze VITE_SUPABASE_URL und VITE_SUPABASE_ANON in deiner Umgebung
-            oder hinterlege sie lokal unter "Plattformen – Konnektivität" nach dem Login. In Vercel werden ENV-Variablen automatisch verwendet.
+          <div className="mt-4 space-y-2 text-xs">
+            <div className="text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+              Supabase URL/Anon Key sind nicht konfiguriert. In Vercel werden ENV-Variablen automatisch verwendet. Alternativ hier lokal hinterlegen:
+            </div>
+            <input className="w-full border rounded p-2" placeholder="https://<ref>.supabase.co" value={sbUrl} onChange={(e)=>setSbUrl(e.target.value)} />
+            <input className="w-full border rounded p-2" placeholder="Anon Public Key" value={sbAnon} onChange={(e)=>setSbAnon(e.target.value)} />
+            <div className="text-right"><button className="px-3 py-1 rounded bg-gray-900 text-white" onClick={applyLocalConfig}>Übernehmen</button></div>
           </div>
         )}
 
@@ -69,7 +83,7 @@ export default function SignIn() {
           >
             {loading ? 'Anmelden…' : 'Anmelden'}
           </button>
-          <p className="text-[11px] text-gray-500">Wenn in Vercel ENV gesetzt sind, werden sie automatisch genutzt; die Felder im App-Tab dienen als Fallback.</p>
+          <p className="text-[11px] text-gray-500">Wenn in Vercel ENV gesetzt sind, werden sie automatisch genutzt; die Felder dienen als Fallback.</p>
         </form>
       </div>
     </div>
