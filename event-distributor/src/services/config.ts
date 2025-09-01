@@ -8,8 +8,8 @@ const keys = {
 };
 
 export function getMode(): AppMode {
-  if (typeof window === 'undefined') return 'api';
-  return (localStorage.getItem(keys.mode) as AppMode) || 'api';
+  if (typeof window === 'undefined') return 'supabase';
+  return (localStorage.getItem(keys.mode) as AppMode) || 'supabase';
 }
 export function setMode(m: AppMode) {
   if (typeof window !== 'undefined') localStorage.setItem(keys.mode, m);
@@ -28,6 +28,8 @@ export function setApiBase(url: string) {
 }
 
 export function getSupabaseUrl() {
+  const env = (import.meta as any)?.env?.VITE_SUPABASE_URL;
+  if (env) return env;
   if (typeof window !== 'undefined') return localStorage.getItem(keys.supabaseUrl) || '';
   return '';
 }
@@ -35,6 +37,8 @@ export function setSupabaseUrl(v: string) {
   if (typeof window !== 'undefined') localStorage.setItem(keys.supabaseUrl, v);
 }
 export function getSupabaseAnon() {
+  const env = (import.meta as any)?.env?.VITE_SUPABASE_ANON;
+  if (env) return env;
   if (typeof window !== 'undefined') return localStorage.getItem(keys.supabaseAnon) || '';
   return '';
 }

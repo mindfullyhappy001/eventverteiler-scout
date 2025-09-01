@@ -6,7 +6,7 @@ function set(k: string, v: string) { try { localStorage.setItem(k, v); } catch {
 export default function App() {
   const [tab, setTab] = useState<'dashboard'|'platforms'|'logs'>('platforms');
 
-  const [mode, setMode] = useState(get('appMode','api'));
+  const [mode, setMode] = useState(get('appMode','supabase'));
   const [apiBase, setApiBase] = useState(get('apiBase','http://localhost:8080'));
   const [supabaseUrl, setSupabaseUrl] = useState(get('supabaseUrl',''));
   const [supabaseAnon, setSupabaseAnon] = useState(get('supabaseAnon',''));
@@ -69,6 +69,7 @@ export default function App() {
                   <input className="w-full border rounded p-2 mt-1" value={supabaseAnon} onChange={(e)=>setSupabaseAnon(e.target.value)} placeholder="public anon key" />
                 </label>
               </div>
+              <p className="text-xs text-gray-500">Wenn in Vercel ENV gesetzt sind, werden sie automatisch genutzt; die Felder hier dienen als Fallback.</p>
               <div className="text-right"><button className="px-4 py-2 rounded bg-blue-600 text-white" onClick={persistConnectivity}>Übernehmen</button></div>
             </section>
 

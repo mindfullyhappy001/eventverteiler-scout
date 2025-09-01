@@ -1,0 +1,6 @@
+{
+  "installCommand": "cd event-distributor && bun install",
+  "buildCommand": "cd event-distributor && bun run build",
+  "outputDirectory": "event-distributor/dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+}
