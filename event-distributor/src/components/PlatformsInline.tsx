@@ -107,7 +107,10 @@ export function PlatformsInline() {
               <Input placeholder="Login E-Mail" value={meetupUi.email} onChange={(e)=>setMeetupUi({...meetupUi, email:e.target.value})} />
               <Input placeholder="Login Passwort" type="password" value={meetupUi.password} onChange={(e)=>setMeetupUi({...meetupUi, password:e.target.value})} />
               <Input placeholder="Group URL (optional)" value={meetupUi.groupUrl} onChange={(e)=>setMeetupUi({...meetupUi, groupUrl:e.target.value})} />
-              <div className="text-right"><Button size="sm" disabled={loading} onClick={()=>save('meetup','ui', meetupUi, true)}>{loading?'Speichern…':'Speichern'}</Button></div>
+              <div className="flex items-center justify-between gap-2">
+                <Button size="sm" variant="outline" disabled={loading} onClick={()=>scheduleOptionDiscovery('meetup','ui')}>Feld-Optionen aktualisieren</Button>
+                <div className="text-right"><Button size="sm" disabled={loading} onClick={()=>save('meetup','ui', meetupUi, true)}>{loading?'Speichern…':'Speichern'}</Button></div>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -126,7 +129,10 @@ export function PlatformsInline() {
               <div className="flex items-center justify-between"><div className="font-medium">UI-Bot</div><Switch checked={enabled('eventbrite','ui')} onCheckedChange={(c)=>save('eventbrite','ui', ebUi, c)} /></div>
               <Input placeholder="Login E-Mail" value={ebUi.email} onChange={(e)=>setEbUi({...ebUi, email:e.target.value})} />
               <Input placeholder="Login Passwort" type="password" value={ebUi.password} onChange={(e)=>setEbUi({...ebUi, password:e.target.value})} />
-              <div className="text-right"><Button size="sm" disabled={loading} onClick={()=>save('eventbrite','ui', ebUi, true)}>{loading?'Speichern…':'Speichern'}</Button></div>
+              <div className="flex items-center justify-between gap-2">
+                <Button size="sm" variant="outline" disabled={loading} onClick={()=>scheduleOptionDiscovery('eventbrite','ui')}>Feld-Optionen aktualisieren</Button>
+                <div className="text-right"><Button size="sm" disabled={loading} onClick={()=>save('eventbrite','ui', ebUi, true)}>{loading?'Speichern…':'Speichern'}</Button></div>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -146,7 +152,10 @@ export function PlatformsInline() {
               <div className="flex items-center justify-between"><div className="font-medium">UI-Bot</div><Switch checked={enabled('facebook','ui')} onCheckedChange={(c)=>save('facebook','ui', fbUi, c)} /></div>
               <Input placeholder="Login E-Mail" value={fbUi.email} onChange={(e)=>setFbUi({...fbUi, email:e.target.value})} />
               <Input placeholder="Login Passwort" type="password" value={fbUi.password} onChange={(e)=>setFbUi({...fbUi, password:e.target.value})} />
-              <div className="text-right"><Button size="sm" disabled={loading} onClick={()=>save('facebook','ui', fbUi, true)}>{loading?'Speichern…':'Speichern'}</Button></div>
+              <div className="flex items-center justify-between gap-2">
+                <Button size="sm" variant="outline" disabled={loading} onClick={()=>scheduleOptionDiscovery('facebook','ui')}>Feld-Optionen aktualisieren</Button>
+                <div className="text-right"><Button size="sm" disabled={loading} onClick={()=>save('facebook','ui', fbUi, true)}>{loading?'Speichern…':'Speichern'}</Button></div>
+              </div>
             </div>
           </div>
         </CardContent>
