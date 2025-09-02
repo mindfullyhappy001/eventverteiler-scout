@@ -61,6 +61,27 @@ create table if not exists "PublishJob" (
   "updatedAt" timestamptz not null default now()
 );
 
+-- Ensure PublishJob.action allows 'discover' on existing DBs
+DO $$
+DECLARE con RECORD;
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='PublishJob' AND column_name='action') THEN
+    FOR con IN
+      SELECT conname FROM pg_constraint 
+      WHERE conrelid='"PublishJob"'::regclass AND contype='c' AND pg_get_constraintdef(oid) ILIKE '%action%'
+    LOOP
+      EXECUTE 'ALTER TABLE "PublishJob" DROP CONSTRAINT ' || quote_ident(con.conname);
+    END LOOP;
+    -- Re-add unified constraint
+    BEGIN
+      ALTER TABLE "PublishJob" ADD CONSTRAINT publishjob_action_check CHECK (action in (''create'',''update'',''delete'',''discover''));
+    EXCEPTION WHEN duplicate_object THEN
+      -- ignore if already present
+      NULL;
+    END;
+  END IF;
+END $$;
+
 create table if not exists "EventPublication" (
   id uuid primary key default gen_random_uuid(),
   "eventId" uuid not null references "Event"(id) on delete cascade,
@@ -97,7 +118,7 @@ create table if not exists "FieldOption" (
   unique (platform, method, field)
 );
 
--- updatedAt trigger
+-- updatedAt trigger function
 create or replace function set_updated_at() returns trigger as $$
 begin
   new."updatedAt" = now();
@@ -105,8 +126,38 @@ begin
 end;
 $$ language plpgsql;
 
-create trigger trg_event_updated before update on "Event" for each row execute procedure set_updated_at();
-create trigger trg_platform_updated before update on "PlatformConfig" for each row execute procedure set_updated_at();
-create trigger trg_job_updated before update on "PublishJob" for each row execute procedure set_updated_at();
-create trigger trg_pub_updated before update on "EventPublication" for each row execute procedure set_updated_at();
-create trigger trg_fieldopt_updated before update on "FieldOption" for each row execute procedure set_updated_at();
+-- Idempotent triggers
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='Event') THEN
+    DROP TRIGGER IF EXISTS trg_event_updated ON "Event";
+    CREATE TRIGGER trg_event_updated BEFORE UPDATE ON "Event" FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='PlatformConfig') THEN
+    DROP TRIGGER IF EXISTS trg_platform_updated ON "PlatformConfig";
+    CREATE TRIGGER trg_platform_updated BEFORE UPDATE ON "PlatformConfig" FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='PublishJob') THEN
+    DROP TRIGGER IF EXISTS trg_job_updated ON "PublishJob";
+    CREATE TRIGGER trg_job_updated BEFORE UPDATE ON "PublishJob" FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='EventPublication') THEN
+    DROP TRIGGER IF EXISTS trg_pub_updated ON "EventPublication";
+    CREATE TRIGGER trg_pub_updated BEFORE UPDATE ON "EventPublication" FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='FieldOption') THEN
+    DROP TRIGGER IF EXISTS trg_fieldopt_updated ON "FieldOption";
+    CREATE TRIGGER trg_fieldopt_updated BEFORE UPDATE ON "FieldOption" FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
+  END IF;
+END $$;
