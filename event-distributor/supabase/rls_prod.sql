@@ -12,14 +12,20 @@
 --
 -- Remove any demo/open policies before applying this file.
 
--- Enable RLS on all tables
+-- Enable RLS on base tables
 alter table "Event" enable row level security;
 alter table "EventVersion" enable row level security;
 alter table "PlatformConfig" enable row level security;
 alter table "PublishJob" enable row level security;
 alter table "EventPublication" enable row level security;
 alter table "LogEntry" enable row level security;
-alter table "FieldOption" enable row level security;
+
+-- Enable RLS on FieldOption only if it exists
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='FieldOption') THEN
+    EXECUTE 'alter table "FieldOption" enable row level security';
+  END IF;
+END $$;
 
 -- ==============================================
 -- VARIANT A (DEFAULT): Authenticated-only access
@@ -60,11 +66,15 @@ drop policy if exists "logentry_modify_authenticated" on "LogEntry";
 create policy "logentry_select_authenticated" on "LogEntry" for select using (auth.role() = 'authenticated');
 create policy "logentry_modify_authenticated" on "LogEntry" for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
 
--- FieldOption
-drop policy if exists "fieldoption_select_authenticated" on "FieldOption";
-drop policy if exists "fieldoption_modify_authenticated" on "FieldOption";
-create policy "fieldoption_select_authenticated" on "FieldOption" for select using (auth.role() = 'authenticated');
-create policy "fieldoption_modify_authenticated" on "FieldOption" for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+-- FieldOption policies (guarded)
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='FieldOption') THEN
+    EXECUTE 'drop policy if exists "fieldoption_select_authenticated" on "FieldOption"';
+    EXECUTE 'drop policy if exists "fieldoption_modify_authenticated" on "FieldOption"';
+    EXECUTE 'create policy "fieldoption_select_authenticated" on "FieldOption" for select using (auth.role() = ''authenticated'')';
+    EXECUTE 'create policy "fieldoption_modify_authenticated" on "FieldOption" for all using (auth.role() = ''authenticated'') with check (auth.role() = ''authenticated'')';
+  END IF;
+END $$;
 
 -- =====================================================================================
 -- VARIANT B (OPTIONAL): Single admin by email (uncomment and set <ADMIN_EMAIL> to enforce)
