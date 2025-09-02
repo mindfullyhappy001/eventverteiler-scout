@@ -43,25 +43,29 @@ async function fetchSpontactsOptions(): Promise<Record<string, string[]>> {
   return { category, visibility, difficulty };
 }
 
-async function readFieldOptions(supaUrl: string, serviceRole: string, platform: string, method?: string) {
+async function readFieldOptions(supaUrl: string, anonKey: string, authBearer: string | undefined, platform: string, method?: string) {
   const params = new URLSearchParams({ select: '*', platform: `eq.${platform}` });
   if (method) params.set('method', `eq.${method}`);
   const url = `${supaUrl}/rest/v1/FieldOption?${params.toString()}`;
-  const res = await fetch(url, { headers: { apikey: serviceRole, Authorization: `Bearer ${serviceRole}` } });
+  const headers: Record<string,string> = { apikey: anonKey };
+  if (authBearer) headers.Authorization = authBearer;
+  const res = await fetch(url, { headers });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
-async function writeFieldOptions(supaUrl: string, serviceRole: string, platform: string, method: string, map: Record<string, string[]>) {
+async function writeFieldOptions(supaUrl: string, anonKey: string, authBearer: string | undefined, platform: string, method: string, map: Record<string, string[]>) {
+  const headers: Record<string,string> = { apikey: anonKey, 'Content-Type': 'application/json', Prefer: 'return=representation' };
+  if (authBearer) headers.Authorization = authBearer;
   // delete existing
   const delParams = new URLSearchParams({ platform: `eq.${platform}`, method: `eq.${method}` });
   const delUrl = `${supaUrl}/rest/v1/FieldOption?${delParams.toString()}`;
-  await fetch(delUrl, { method: 'DELETE', headers: { apikey: serviceRole, Authorization: `Bearer ${serviceRole}` } });
+  await fetch(delUrl, { method: 'DELETE', headers });
   // insert new
   const rows = Object.entries(map).map(([field, options]) => ({ platform, method, field, options }));
   if (!rows.length) return [];
   const insUrl = `${supaUrl}/rest/v1/FieldOption`;
-  const ins = await fetch(insUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: serviceRole, Authorization: `Bearer ${serviceRole}`, Prefer: 'return=representation' }, body: JSON.stringify(rows) });
+  const ins = await fetch(insUrl, { method: 'POST', headers, body: JSON.stringify(rows) });
   if (!ins.ok) throw new Error(await ins.text());
   return ins.json();
 }
@@ -75,10 +79,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!platform) return res.status(400).json({ error: 'platform required' });
 
     const supaUrl = requiredEnv('SUPABASE_URL');
-    const serviceRole = requiredEnv('SUPABASE_SERVICE_ROLE');
+    const anonKey = requiredEnv('SUPABASE_ANON_KEY');
+    const authBearer = req.headers['authorization'] as string | undefined;
 
     if (!refresh) {
-      const existing = await readFieldOptions(supaUrl, serviceRole, platform, method);
+      const existing = await readFieldOptions(supaUrl, anonKey, authBearer, platform, method);
       if (existing?.length) {
         const map: Record<string, string[]> = {};
         for (const row of existing) map[row.field] = row.options || [];
@@ -93,7 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'unsupported platform for discovery' });
     }
 
-    await writeFieldOptions(supaUrl, serviceRole, platform, method, options);
+    await writeFieldOptions(supaUrl, anonKey, authBearer, platform, method, options);
     return res.json({ ok: true, platform, method, options });
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || String(e) });
