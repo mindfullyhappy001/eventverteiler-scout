@@ -101,17 +101,6 @@ export async function listFieldOptionsFor(platform: string, method?: 'api'|'ui')
 }
 
 export async function scheduleOptionDiscovery(platform: string, method: 'api'|'ui' = 'ui') {
-  if (getMode() === 'api') return api(`/api/field-options?platform=${encodeURIComponent(platform)}&method=${method}&refresh=1`);
-  const sb: any = supa();
-  const { data: ev, error: e1 } = await sb.from('Event').insert([{ title: `Options Refresh ${platform}`, description: 'Auto-generated placeholder for discovery' }]).select('id').single();
-  if (e1) throw e1;
-  const { error: e2 } = await sb.from('PublishJob').insert([{ 
-    eventId: ev.id,
-    platform,
-    method,
-    action: 'discover',
-    scheduledAt: new Date().toISOString(),
-    status: 'scheduled'
-  }]);
-  if (e2) throw e2; return { ok: true };
+  // Always call the API endpoint so no background runner is required
+  return api(`/api/field-options?platform=${encodeURIComponent(platform)}&method=${method}&refresh=1`);
 }
