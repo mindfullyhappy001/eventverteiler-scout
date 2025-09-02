@@ -53,6 +53,19 @@ async function upsertPublication(sb: any, eventId: string, platform: string, met
   }
 }
 
+async function saveFieldOptions(sb: any, platform: string, method: 'api'|'ui', options: Record<string, string[]>) {
+  for (const [field, opts] of Object.entries(options || {})) {
+    const { data: exist } = await sb.from('FieldOption').select('id').eq('platform', platform).eq('method', method).eq('field', field).maybeSingle();
+    if (exist?.id) {
+      const { error } = await sb.from('FieldOption').update({ options: opts, updatedAt: new Date().toISOString() }).eq('id', exist.id);
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from('FieldOption').insert([{ platform, method, field, options: opts }]);
+      if (error) throw error;
+    }
+  }
+}
+
 async function runOnce() {
   const sb = await supabaseClient();
   const job = await pickNextJob(sb);
@@ -63,7 +76,26 @@ async function runOnce() {
     const event = await loadEvent(sb, job.eventId);
     const cfg = await loadPlatformCfg(sb, job.platform, job.method);
 
-    if (job.platform === 'spontacts' && job.method === 'ui') {
+    if (job.platform === 'spontacts' && job.method === 'ui' && job.action === 'discover') {
+      const res = await execa('tsx', ['src/spontacts/discoverOptions.ts'], {
+        cwd: new URL('./', import.meta.url).pathname.replace(/bots\/$/, 'bots/'),
+        stdio: 'pipe',
+        env: {
+          EVENT_JSON: JSON.stringify(event),
+          BOT_CONFIG: JSON.stringify(cfg || {}),
+          JOB_ID: job.id,
+        }
+      });
+      if (res.exitCode === 0) {
+        try {
+          const parsed = JSON.parse((res.stdout || '').trim() || '{}');
+          if (parsed?.options) await saveFieldOptions(sb, job.platform, job.method, parsed.options);
+        } catch {}
+        await markJob(sb, job.id, { status: 'completed', result: { ok: true } });
+      } else {
+        throw new Error('Discover bot exited with code ' + res.exitCode);
+      }
+    } else if (job.platform === 'spontacts' && job.method === 'ui') {
       const res = await execa('tsx', ['src/spontacts/createEvent.ts'], {
         cwd: new URL('./', import.meta.url).pathname.replace(/bots\/$/, 'bots/'),
         stdio: 'inherit',
@@ -80,7 +112,7 @@ async function runOnce() {
         throw new Error('Bot exited with code ' + res.exitCode);
       }
     } else {
-      throw new Error('Unsupported job: ' + job.platform + '/' + job.method);
+      throw new Error('Unsupported job: ' + job.platform + '/' + job.method + '/' + job.action);
     }
   } catch (e: any) {
     await upsertPublication(sb, job.eventId, job.platform, job.method, 'error', { error: e?.message || String(e) });

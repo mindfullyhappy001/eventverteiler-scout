@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { getApiBase, setApiBase, getSupabaseUrl, setSupabaseUrl, getSupabaseAnon, setSupabaseAnon, getMode, setMode } from '@/services/config';
-import { listPlatformConfigs, savePlatformConfig } from '@/services/data';
+import { listPlatformConfigs, savePlatformConfig, scheduleOptionDiscovery } from '@/services/data';
 
 export function PlatformsInline() {
   const [items, setItems] = useState<any[]>([]);
@@ -164,7 +164,10 @@ export function PlatformsInline() {
               <div className="flex items-center justify-between"><div className="font-medium">UI-Bot</div><Switch checked={enabled('spontacts','ui')} onCheckedChange={(c)=>save('spontacts','ui', spUi, c)} /></div>
               <Input placeholder="Login E-Mail" value={spUi.email} onChange={(e)=>setSpUi({...spUi, email:e.target.value})} />
               <Input placeholder="Login Passwort" type="password" value={spUi.password} onChange={(e)=>setSpUi({...spUi, password:e.target.value})} />
-              <div className="text-right"><Button size="sm" disabled={loading} onClick={()=>save('spontacts','ui', spUi, true)}>{loading?'Speichern…':'Speichern'}</Button></div>
+              <div className="flex items-center justify-between gap-2">
+                <Button size="sm" variant="outline" disabled={loading} onClick={()=>scheduleOptionDiscovery('spontacts','ui')}>Feld-Optionen aktualisieren</Button>
+                <div className="text-right"><Button size="sm" disabled={loading} onClick={()=>save('spontacts','ui', spUi, true)}>{loading?'Speichern…':'Speichern'}</Button></div>
+              </div>
             </div>
           </div>
         </CardContent>

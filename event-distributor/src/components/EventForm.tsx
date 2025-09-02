@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { EventInput } from '../../shared/types';
+import { listFieldOptionsFor } from '@/services/data';
 
 export function EventForm({ initial, onSubmit, onCancel }: { initial?: Partial<EventInput>; onSubmit: (v: EventInput) => void; onCancel?: () => void }) {
   const [v, setV] = useState<EventInput>({
@@ -21,6 +23,22 @@ export function EventForm({ initial, onSubmit, onCancel }: { initial?: Partial<E
     url: initial?.url || '',
     spontacts: (initial as any)?.spontacts || {}
   } as any);
+
+  const [spOpts, setSpOpts] = useState<Record<string, string[]>>({});
+  useEffect(() => {
+    (async () => {
+      try {
+        const opts = await listFieldOptionsFor('spontacts', 'ui');
+        setSpOpts(opts || {});
+      } catch {
+        setSpOpts({});
+      }
+    })();
+  }, []);
+
+  const catOptions = spOpts['category'] || [];
+  const visOptions = spOpts['visibility'] || [];
+  const difOptions = spOpts['difficulty'] || [];
 
   return (
     <div className="space-y-3">
@@ -44,12 +62,51 @@ export function EventForm({ initial, onSubmit, onCancel }: { initial?: Partial<E
       <div className="pt-2">
         <div className="text-sm font-medium">Spontacts – Details</div>
         <div className="grid md:grid-cols-2 gap-2 mt-2">
-          <Input placeholder="Kategorie (Spontacts)" value={(v as any).spontacts?.category || ''} onChange={(e)=>setV({ ...v, spontacts: { ...(v as any).spontacts, category: e.target.value } } as any)} />
+          {catOptions.length > 0 ? (
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Kategorie (Spontacts)</div>
+              <Select value={(v as any).spontacts?.category || ''} onValueChange={(val)=>setV({ ...v, spontacts: { ...(v as any).spontacts, category: val } } as any)}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Kategorie wählen" /></SelectTrigger>
+                <SelectContent>
+                  {catOptions.map((o)=> (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <Input placeholder="Kategorie (Spontacts)" value={(v as any).spontacts?.category || ''} onChange={(e)=>setV({ ...v, spontacts: { ...(v as any).spontacts, category: e.target.value } } as any)} />
+          )}
+
           <Input placeholder="Stadt" value={(v as any).spontacts?.city || ''} onChange={(e)=>setV({ ...v, spontacts: { ...(v as any).spontacts, city: e.target.value } } as any)} />
           <Input placeholder="Treffpunkt" value={(v as any).spontacts?.meetingPoint || ''} onChange={(e)=>setV({ ...v, spontacts: { ...(v as any).spontacts, meetingPoint: e.target.value } } as any)} />
           <Input placeholder="Max. Teilnehmer" type="number" value={(v as any).spontacts?.maxParticipants ?? ''} onChange={(e)=>setV({ ...v, spontacts: { ...(v as any).spontacts, maxParticipants: e.target.value ? Number(e.target.value) : undefined } } as any)} />
-          <Input placeholder="Sichtbarkeit (public/friends/private)" value={(v as any).spontacts?.visibility || ''} onChange={(e)=>setV({ ...v, spontacts: { ...(v as any).spontacts, visibility: e.target.value as any } } as any)} />
-          <Input placeholder="Schwierigkeit (frei)" value={(v as any).spontacts?.difficulty || ''} onChange={(e)=>setV({ ...v, spontacts: { ...(v as any).spontacts, difficulty: e.target.value } } as any)} />
+
+          {visOptions.length > 0 ? (
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Sichtbarkeit</div>
+              <Select value={(v as any).spontacts?.visibility || ''} onValueChange={(val)=>setV({ ...v, spontacts: { ...(v as any).spontacts, visibility: val as any } } as any)}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Sichtbarkeit wählen" /></SelectTrigger>
+                <SelectContent>
+                  {visOptions.map((o)=> (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <Input placeholder="Sichtbarkeit (public/friends/private)" value={(v as any).spontacts?.visibility || ''} onChange={(e)=>setV({ ...v, spontacts: { ...(v as any).spontacts, visibility: e.target.value as any } } as any)} />
+          )}
+
+          {difOptions.length > 0 ? (
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Schwierigkeit</div>
+              <Select value={(v as any).spontacts?.difficulty || ''} onValueChange={(val)=>setV({ ...v, spontacts: { ...(v as any).spontacts, difficulty: val } } as any)}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Schwierigkeit wählen" /></SelectTrigger>
+                <SelectContent>
+                  {difOptions.map((o)=> (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <Input placeholder="Schwierigkeit (frei)" value={(v as any).spontacts?.difficulty || ''} onChange={(e)=>setV({ ...v, spontacts: { ...(v as any).spontacts, difficulty: e.target.value } } as any)} />
+          )}
         </div>
       </div>
 

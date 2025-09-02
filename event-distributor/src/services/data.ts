@@ -84,3 +84,36 @@ export async function schedulePublishJob(payload: { eventId: string; platform: s
   }]);
   if (error) throw error; return { ok: true };
 }
+
+export async function listFieldOptionsFor(platform: string, method?: 'api'|'ui'): Promise<Record<string, string[]>> {
+  if (getMode() === 'api') {
+    const data = await api<any[]>(`/api/field-options?platform=${encodeURIComponent(platform)}${method?`&method=${method}`:''}`);
+    const map: Record<string, string[]> = {};
+    (data||[]).forEach((row: any) => { map[row.field] = row.options || []; });
+    return map;
+  }
+  const sb: any = supa();
+  let q = sb.from('FieldOption').select('*').eq('platform', platform);
+  if (method) q = q.eq('method', method);
+  const { data, error } = await q;
+  if (error) throw error;
+  const map: Record<string, string[]> = {};
+  (data || []).forEach((row: any) => { map[row.field] = row.options || []; });
+  return map;
+}
+
+export async function scheduleOptionDiscovery(platform: string, method: 'api'|'ui' = 'ui') {
+  if (getMode() === 'api') return api('/api/options/discover', { method: 'POST', body: JSON.stringify({ platform, method }) });
+  const sb: any = supa();
+  const { data: ev, error: e1 } = await sb.from('Event').insert([{ title: `Options Refresh ${platform}`, description: 'Auto-generated placeholder for discovery' }]).select('id').single();
+  if (e1) throw e1;
+  const { error: e2 } = await sb.from('PublishJob').insert([{ 
+    eventId: ev.id,
+    platform,
+    method,
+    action: 'discover',
+    scheduledAt: new Date().toISOString(),
+    status: 'scheduled'
+  }]);
+  if (e2) throw e2; return { ok: true };
+}

@@ -1,6 +1,6 @@
 import { chromium } from '@playwright/test';
 import { loadOrCreateSession } from '../shared/session.js';
-import { smartFill, clickByText } from '../shared/helpers.js';
+import { smartFill, smartSelect, clickByText } from '../shared/helpers.js';
 import { createArtifacts } from '../shared/logging.js';
 import { mapToSpontactsFields } from '../../../shared/platforms/spontacts';
 
@@ -40,11 +40,13 @@ const cfg = JSON.parse(process.env.BOT_CONFIG || '{}');
     if (m.description) await smartFill(page, 'Beschreibung', m.description) || await smartFill(page, 'Description', m.description);
     if (m.date) await smartFill(page, 'Datum', new Date(m.date).toLocaleDateString()) || await smartFill(page, 'Date', new Date(m.date).toLocaleDateString());
     if (m.time) await smartFill(page, 'Uhrzeit', m.time) || await smartFill(page, 'Time', m.time);
-    if (m.category) await smartFill(page, 'Kategorie', m.category) || await smartFill(page, 'Category', m.category);
+    if (m.category) (await smartSelect(page, 'Kategorie', m.category)) || (await smartSelect(page, 'Category', m.category)) || (await smartFill(page, 'Kategorie', m.category)) || (await smartFill(page, 'Category', m.category));
     if (m.city) await smartFill(page, 'Ort', m.city) || await smartFill(page, 'City', m.city);
     if (m.meetingPoint) await smartFill(page, 'Treffpunkt', m.meetingPoint) || await smartFill(page, 'Meeting point', m.meetingPoint);
     if (m.maxParticipants) await smartFill(page, 'Teilnehmer', String(m.maxParticipants)) || await smartFill(page, 'Participants', String(m.maxParticipants));
     if (m.price) await smartFill(page, 'Preis', String(m.price)) || await smartFill(page, 'Price', String(m.price));
+    if (m.visibility) (await smartSelect(page, 'Sichtbarkeit', m.visibility)) || (await smartSelect(page, 'Visibility', m.visibility));
+    if (m.difficulty) (await smartSelect(page, 'Schwierigkeit', m.difficulty)) || (await smartSelect(page, 'Difficulty', m.difficulty));
 
     await clickByText(page, 'Veröffentlichen') || await clickByText(page, 'Publish');
     await page.waitForLoadState('networkidle');
