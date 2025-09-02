@@ -29,8 +29,22 @@ async function main() {
         await storage.saveSession(job.platform, newState);
         await queue.upsertPublication(job.eventId, job.platform, job.method, 'published', { jobId: job.id });
         await queue.markJob(job.id, { status: 'completed' });
-      } else if (job.platform === 'spontacts' && job.method === 'ui' && job.action === 'discover') {
-        const map = await discoverSpontacts(context, platformCfg);
+      } else if (job.method === 'ui' && job.action === 'discover') {
+        let map: Record<string,string[]> = {};
+        if (job.platform === 'spontacts') {
+          map = await discoverSpontacts(context, platformCfg);
+        } else if (job.platform === 'meetup') {
+          const { discoverMeetup } = await import('./bots/discover/meetup');
+          map = await discoverMeetup(context, platformCfg);
+        } else if (job.platform === 'eventbrite') {
+          const { discoverEventbrite } = await import('./bots/discover/eventbrite');
+          map = await discoverEventbrite(context, platformCfg);
+        } else if (job.platform === 'facebook') {
+          const { discoverFacebook } = await import('./bots/discover/facebook');
+          map = await discoverFacebook(context, platformCfg);
+        } else {
+          throw new Error(`Unsupported discover platform ${job.platform}`);
+        }
         await queue.saveFieldOptions(job.platform, job.method, map);
         await queue.markJob(job.id, { status: 'completed', result: { ok: true } });
       } else {
