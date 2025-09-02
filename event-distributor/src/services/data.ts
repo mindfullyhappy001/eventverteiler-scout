@@ -101,7 +101,7 @@ export async function listFieldOptionsFor(platform: string, method?: 'api'|'ui')
 }
 
 export async function scheduleOptionDiscovery(platform: string, method: 'api'|'ui' = 'ui') {
-  if (getMode() === 'api') return api(`/api/field-options?platform=${encodeURIComponent(platform)}&method=${method}&refresh=1`);
+  // On-demand: schedule discovery job for the Desktop Runner (or any Playwright runner)
   const sb: any = supa();
   const { data: ev, error: e1 } = await sb.from('Event').insert([{ title: `Options Refresh ${platform}`, description: 'Auto-generated placeholder for discovery' }]).select('id').single();
   if (e1) throw e1;

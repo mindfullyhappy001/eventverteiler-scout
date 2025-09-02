@@ -55,5 +55,18 @@ export class SupabaseQueue {
       if (error) throw error;
     }
   }
+  async saveFieldOptions(platform: string, method: Method, map: Record<string,string[]>) {
+    await this.authBot();
+    for (const [field, options] of Object.entries(map)) {
+      const { data: exist } = await this.sb.from('FieldOption').select('id').eq('platform', platform).eq('method', method).eq('field', field).maybeSingle();
+      if (exist?.id) {
+        const { error } = await this.sb.from('FieldOption').update({ options, updatedAt: new Date().toISOString() }).eq('id', exist.id);
+        if (error) throw error;
+      } else {
+        const { error } = await this.sb.from('FieldOption').insert([{ platform, method, field, options }]);
+        if (error) throw error;
+      }
+    }
+  }
   client() { return this.sb; }
 }
