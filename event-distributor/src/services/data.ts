@@ -115,3 +115,9 @@ export async function scheduleOptionDiscovery(platform: string, method: 'api'|'u
   }]);
   if (e2) throw e2; return { ok: true };
 }
+
+export async function scheduleOptionDiscoveryAll() {
+  const platforms = ['spontacts','meetup','eventbrite','facebook'];
+  for (const p of platforms) await scheduleOptionDiscovery(p,'ui');
+  return { ok: true };
+}

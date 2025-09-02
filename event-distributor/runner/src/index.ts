@@ -12,6 +12,21 @@ async function main() {
   const browser = cfg.mode === 'ws' ? new WsBrowserAdapter(cfg.wsEndpoint) : new LocalBrowserAdapter();
   await browser.connect();
 
+  // Optional: auto-schedule discover for missing options on start
+  if (process.env.AUTO_DISCOVER_ON_START === '1') {
+    try {
+      const sb = queue.client();
+      const platforms = ['spontacts','meetup','eventbrite','facebook'];
+      for (const p of platforms) {
+        const { data } = await sb.from('FieldOption').select('id').eq('platform', p).limit(1);
+        if (!data || data.length === 0) {
+          await sb.from('PublishJob').insert([{ eventId: (await sb.from('Event').insert([{ title: `Options Refresh ${p}` }]).select('id').single()).data.id, platform: p, method: 'ui', action: 'discover', scheduledAt: new Date().toISOString(), status: 'scheduled' }]);
+          console.log(`[auto] scheduled discover for ${p}`);
+        }
+      }
+    } catch (e) { console.warn('AUTO_DISCOVER_ON_START failed', e); }
+  }
+
   async function processOne(): Promise<boolean> {
     const job = await queue.pickNextJob();
     if (!job) return false;
