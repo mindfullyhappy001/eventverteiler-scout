@@ -3,6 +3,7 @@ import { LocalBrowserAdapter, WsBrowserAdapter } from './adapters/browser';
 import { SupabaseQueue } from './adapters/queueSupabase';
 import { SupabaseStorage } from './adapters/storageSupabase';
 import { runSpontacts } from './bots/spontacts';
+import { discoverSpontacts } from './bots/discover/spontacts';
 
 async function main() {
   const once = process.argv.includes('--once');
@@ -22,14 +23,18 @@ async function main() {
       const context = await browser.newContext({ storageState });
       const saveArtifact = async (name: string, blob: Blob) => storage.saveArtifact(job.id, name, blob);
 
-      if (job.platform === 'spontacts' && job.method === 'ui') {
+      if (job.platform === 'spontacts' && job.method === 'ui' && (job.action === 'create' || !job.action)) {
         await runSpontacts(context, job.id, event, platformCfg, saveArtifact);
         const newState = await context.storageState();
         await storage.saveSession(job.platform, newState);
         await queue.upsertPublication(job.eventId, job.platform, job.method, 'published', { jobId: job.id });
         await queue.markJob(job.id, { status: 'completed' });
+      } else if (job.platform === 'spontacts' && job.method === 'ui' && job.action === 'discover') {
+        const map = await discoverSpontacts(context, platformCfg);
+        await queue.saveFieldOptions(job.platform, job.method, map);
+        await queue.markJob(job.id, { status: 'completed', result: { ok: true } });
       } else {
-        throw new Error(`Unsupported job ${job.platform}/${job.method}`);
+        throw new Error(`Unsupported job ${job.platform}/${job.method}/${job.action}`);
       }
       await context.close().catch(()=>{});
     } catch (e: any) {
