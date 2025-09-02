@@ -11,11 +11,19 @@ export function setApiBase(url: string) {
   if (typeof window !== 'undefined') localStorage.setItem('apiBase', url);
 }
 
+import { supa } from './supabase';
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const base = getApiBase();
+  let authHeader: Record<string,string> = {};
+  try {
+    const { data } = await supa().auth.getSession();
+    const token = data.session?.access_token;
+    if (token) authHeader = { Authorization: `Bearer ${token}` };
+  } catch {}
   const res = await fetch(`${base}${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+    headers: { 'Content-Type': 'application/json', ...authHeader, ...(init?.headers || {}) },
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
