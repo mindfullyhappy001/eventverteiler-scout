@@ -6,6 +6,7 @@
   "scripts": {
     "install:pw": "npx playwright install --with-deps",
     "run": "tsx runner.ts",
+    "start": "tsx supabase-runner.ts",
     "supabase:worker": "tsx supabase-runner.ts",
     "supabase:once": "tsx supabase-runner.ts once",
     "spontacts:create": "tsx src/spontacts/createEvent.ts",
