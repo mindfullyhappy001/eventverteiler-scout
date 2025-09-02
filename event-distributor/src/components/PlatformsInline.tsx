@@ -4,7 +4,7 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { getApiBase, setApiBase, getSupabaseUrl, setSupabaseUrl, getSupabaseAnon, setSupabaseAnon, getMode, setMode } from '@/services/config';
-import { listPlatformConfigs, savePlatformConfig, scheduleOptionDiscovery } from '@/services/data';
+import { listPlatformConfigs, savePlatformConfig, scheduleOptionDiscovery, scheduleOptionDiscoveryAll } from '@/services/data';
 
 export function PlatformsInline() {
   const [items, setItems] = useState<any[]>([]);
@@ -66,6 +66,7 @@ export function PlatformsInline() {
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row items-start md:items-end gap-2 md:gap-4">
         <h2 className="text-xl font-semibold">Plattformen – Konnektivität</h2>
+        <div className="ml-auto"><Button variant="secondary" size="sm" disabled={loading} onClick={()=>{setLoading(true);scheduleOptionDiscoveryAll().finally(()=>setLoading(false));}}>Alle Feld‑Optionen aktualisieren</Button></div>
         <div className="ml-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 w-full md:w-auto">
           <div>
             <div className="text-xs text-muted-foreground">Modus</div>
